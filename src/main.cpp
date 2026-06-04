@@ -1,14 +1,14 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+HardwareSerial DebugSerial(PA10, PA9);
+
 void setup() {
   // Force debug output onto USART1 TX/RX pins for the custom G070KB board.
-  Serial1.setTx(PA9);
-  Serial1.setRx(PA10);
-  Serial1.begin(115200);
+  DebugSerial.begin(115200);
   delay(200);
 
-  Serial1.println("\n--- STM32G070K I2C Scanner Ready ---");
+  DebugSerial.println("\n--- STM32G070K I2C Scanner Ready ---");
 
   // Initialize I2C using the pins defined in platformio.ini
   // If you need to manually override them, use: Wire.setSDA(PB9); Wire.setSCL(PB8);
@@ -19,7 +19,7 @@ void loop() {
   byte error, address;
   int nDevices;
 
-  Serial1.println("Scanning for I2C devices...");
+  DebugSerial.println("Scanning for I2C devices...");
 
   nDevices = 0;
   for (address = 1; address < 127; address++) {
@@ -30,28 +30,28 @@ void loop() {
     error = Wire.endTransmission();
 
     if (error == 0) {
-      Serial1.print("I2C device found at address 0x");
+      DebugSerial.print("I2C device found at address 0x");
       if (address < 16) {
-        Serial1.print("0");
+        DebugSerial.print("0");
       }
-      Serial1.print(address, HEX);
-      Serial1.println(" !");
+      DebugSerial.print(address, HEX);
+      DebugSerial.println(" !");
 
       nDevices++;
     } 
     else if (error == 4) {
-      Serial1.print("Unknown error at address 0x");
+      DebugSerial.print("Unknown error at address 0x");
       if (address < 16) {
-        Serial1.print("0");
+        DebugSerial.print("0");
       }
-      Serial1.println(address, HEX);
+      DebugSerial.println(address, HEX);
     }
   }
 
   if (nDevices == 0) {
-    Serial1.println("No I2C devices found\n");
+    DebugSerial.println("No I2C devices found\n");
   } else {
-    Serial1.println("Scan complete.\n");
+    DebugSerial.println("Scan complete.\n");
   }
 
   delay(5000); // Wait 5 seconds before scanning again
