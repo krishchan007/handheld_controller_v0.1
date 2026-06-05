@@ -122,6 +122,29 @@ static void printPowerStatus() {
       mode == IP5306::PowerMode::PowerDown ? "PowerDown" : "Unknown");
 }
 
+static void printStartupSummary() {
+  uint8_t ll = 0;
+  uint8_t sys0 = 0;
+  IP5306::PowerMode mode;
+
+  if (!charger.getLightLoadShutdownTime(ll) ||
+      !charger.readRegister(IP5306::REG_SYS_0, sys0) ||
+      !charger.getPowerMode(mode)) {
+    DebugSerial.println("Failed to read startup summary.");
+    return;
+  }
+
+  DebugSerial.print("Startup: mode=");
+  DebugSerial.print(
+      mode == IP5306::PowerMode::Normal ? "Normal" :
+      mode == IP5306::PowerMode::Standby ? "Standby" :
+      mode == IP5306::PowerMode::PowerDown ? "PowerDown" : "Unknown");
+  DebugSerial.print(" light_load_shutdown=");
+  DebugSerial.print(ll);
+  DebugSerial.print(" boost_output=");
+  DebugSerial.println((sys0 >> 1) & 0x01);
+}
+
 void setup() {
   DebugSerial.begin(115200);
   delay(200);
@@ -152,6 +175,7 @@ void setup() {
     } else {
       DebugSerial.println("disableLightLoadShutdown() failed or did not verify.");
     }
+    printStartupSummary();
     printPowerStatus();
   } else {
     DebugSerial.println("IP5306 not detected or not responding.");
