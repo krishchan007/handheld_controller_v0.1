@@ -7,6 +7,13 @@ class IP5306 {
 public:
   static constexpr uint8_t kDefaultAddress = 0x75;
 
+  enum class PowerMode : uint8_t {
+    Normal = 0,
+    Standby = 1,
+    PowerDown = 2,
+    Unknown = 255,
+  };
+
   static constexpr uint8_t REG_SYS_0 = 0x00;
   static constexpr uint8_t REG_SYS_1 = 0x01;
   static constexpr uint8_t REG_SYS_2 = 0x02;
@@ -26,8 +33,17 @@ public:
   bool begin();
   uint8_t address() const;
 
+  bool getPowerMode(PowerMode &mode) const;
+  bool setPowerMode(PowerMode mode);
+  bool setNormalMode();
+  bool setStandbyMode();
+  bool setPowerDownMode();
+  bool disableLightLoadShutdown();
+  bool setLightLoadShutdownTime(uint8_t value);
+  bool getLightLoadShutdownTime(uint8_t &value) const;
+
   bool readRegister(uint8_t reg, uint8_t &value) const;
-  bool writeRegister(uint8_t reg, uint8_t value);
+  bool writeRegister(uint8_t reg, uint8_t value, bool verify = true);
   bool readBits(uint8_t reg, uint8_t bitIndex, uint8_t bitCount, uint8_t &value) const;
   bool updateBits(uint8_t reg, uint8_t bitIndex, uint8_t bitCount, uint8_t value);
 
