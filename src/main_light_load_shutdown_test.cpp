@@ -7,6 +7,21 @@ namespace {
 HardwareSerial DebugSerial(PA10, PA9);
 IP5306 charger;
 
+void printResetCause() {
+  const uint32_t csr = RCC->CSR;
+  DebugSerial.print("Reset cause CSR=0x");
+  DebugSerial.println(csr, HEX);
+  RCC->CSR |= RCC_CSR_RMVF;
+}
+
+bool reinitWire() {
+  Wire.end();
+  delay(20);
+  Wire.begin();
+  delay(20);
+  return charger.begin();
+}
+
 void printSys2State() {
   uint8_t raw = 0;
   uint8_t ll = 0;
@@ -90,6 +105,7 @@ void setup() {
 
   DebugSerial.println();
   DebugSerial.println(">>> IP5306 LIGHT LOAD SHUTDOWN TEST <<<");
+  printResetCause();
 
   Wire.begin();
   delay(10);
@@ -120,6 +136,15 @@ void setup() {
 
 void loop() {
   delay(5000);
+  uint8_t probe = 0;
+  if (!charger.readRegister(IP5306::REG_SYS_2, probe)) {
+    DebugSerial.println("I2C failed, attempting Wire reinit...");
+    if (!reinitWire()) {
+      DebugSerial.println("Wire reinit failed.");
+      return;
+    }
+    DebugSerial.println("Wire reinit succeeded.");
+  }
   printSys2State();
   printPowerStatus();
 }
