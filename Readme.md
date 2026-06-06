@@ -1,6 +1,6 @@
-# IP5306_ESP32 Library
+# IP5306_I2C Library
 
-The **IP5306_ESP32** library is designed to interact with the IP5306 power management IC using I2C. This library is inferred or inspired from the original [IP5306 Arduino Library](https://github.com/Al1c3-1337/IP5306-arduino/tree/master), with some minor changes.
+The **IP5306_I2C** library is designed to interact with the IP5306 power management IC using I2C. This library is inferred or inspired from the original [IP5306 Arduino Library](https://github.com/Al1c3-1337/IP5306-arduino/tree/master), with some minor changes.
 
 ## Features
 
@@ -9,7 +9,7 @@ The **IP5306_ESP32** library is designed to interact with the IP5306 power manag
 
 ## Changes Made
 
-- Adjusted the library on compatibility with ESP32.
+- Adjusted the library for compatibility with generic microcontrollers.
 - Uploaded a working example sketch to demonstrate API usage.
 
 ## Tested Hardware
@@ -29,7 +29,7 @@ Below is a schematic illustrating this issue:
 ## Installation
 
 1. Clone or download the repository.
-2. Place the `IP5306_ESP32` folder in your Arduino `libraries` folder.
+2. Place the `IP5306` folder in your Arduino `libraries` folder.
 3. Restart the Arduino IDE to ensure the library is recognized.
 
 ## API Reference
@@ -40,7 +40,7 @@ Include the library and initialize I2C before using the APIs:
 
 ```cpp
 #include <Wire.h>
-#include "IP5306_ESP32.h"
+#include "IP5306.h"
 
 void setup() {
     Wire.begin();
@@ -49,7 +49,7 @@ void setup() {
 
 ### API Functions
 
-Below are all the available API functions in the `IP5306_ESP32.h` file with their usage and expected output.
+Below are all the available API functions in the `IP5306.h` file with their usage and expected output.
 
 #### **System Configuration**
 

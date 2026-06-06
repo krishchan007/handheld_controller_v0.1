@@ -5,7 +5,7 @@
 */
 
 #include "Wire.h"
-#include "IP5306_ESP32.h"
+#include "IP5306.h"
 
 int ip5306_get_reg(uint8_t reg){
     Wire.beginTransmission(0x75);
