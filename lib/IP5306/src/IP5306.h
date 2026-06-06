@@ -38,6 +38,12 @@ public:
   bool setNormalMode();
   bool setStandbyMode();
   bool setPowerDownMode();
+  bool setLongPressTime(bool threeSeconds);
+  bool getLongPressTime(bool &threeSeconds) const;
+  bool setFlashlightOnLongPress(bool enable);
+  bool getFlashlightOnLongPress(bool &enable) const;
+  bool setBoostOffOnLongPress(bool enable);
+  bool getBoostOffOnLongPress(bool &enable) const;
   bool disableLightLoadShutdown();
   bool setLightLoadShutdownTime(uint8_t value);
   bool getLightLoadShutdownTime(uint8_t &value) const;

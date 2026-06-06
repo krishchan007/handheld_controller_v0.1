@@ -77,6 +77,45 @@ bool IP5306::setPowerDownMode() {
          updateBits(REG_SYS_0, 5, 1, 0);
 }
 
+bool IP5306::setLongPressTime(bool threeSeconds) {
+  return updateBits(REG_SYS_2, 4, 1, threeSeconds ? 1 : 0);
+}
+
+bool IP5306::getLongPressTime(bool &threeSeconds) const {
+  uint8_t value = 0;
+  if (!readBits(REG_SYS_2, 4, 1, value)) {
+    return false;
+  }
+  threeSeconds = (value != 0);
+  return true;
+}
+
+bool IP5306::setFlashlightOnLongPress(bool enable) {
+  return updateBits(REG_SYS_1, 6, 1, enable ? 1 : 0);
+}
+
+bool IP5306::getFlashlightOnLongPress(bool &enable) const {
+  uint8_t value = 0;
+  if (!readBits(REG_SYS_1, 6, 1, value)) {
+    return false;
+  }
+  enable = (value != 0);
+  return true;
+}
+
+bool IP5306::setBoostOffOnLongPress(bool enable) {
+  return updateBits(REG_SYS_1, 7, 1, enable ? 0 : 1);
+}
+
+bool IP5306::getBoostOffOnLongPress(bool &enable) const {
+  uint8_t value = 0;
+  if (!readBits(REG_SYS_1, 7, 1, value)) {
+    return false;
+  }
+  enable = (value == 0);
+  return true;
+}
+
 bool IP5306::disableLightLoadShutdown() {
   return setLightLoadShutdownTime(0);
 }

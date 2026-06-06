@@ -153,8 +153,6 @@ void setup() {
   DebugSerial.println(">>> STM32G070 NEOPIXEL BUTTON TEST <<<");
   beepShort();
   delay(200);
-
-
   pinMode(LED_CTRL, OUTPUT);
   digitalWrite(LED_CTRL, LOW);
   delay(10);
