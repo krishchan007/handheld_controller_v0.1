@@ -30,6 +30,8 @@ void wakeUpISR() {
   // Do nothing, just waking up the core
 }
 
+bool loraPresent = false;
+
 void initLoRa() {
   DebugSerial.print("Initializing SPI for LoRa... ");
   SPI.setMOSI(LORA_MOSI);
@@ -45,9 +47,21 @@ void initLoRa() {
     DebugSerial.println("Success! SX1262 detected.");
     // Set RF switch pins (RXEN, TXEN)
     radio.setRfSwitchPins(LORA_RXEN, LORA_TXEN);
+    loraPresent = true;
   } else {
     DebugSerial.print("Failed to communicate, code: ");
     DebugSerial.println(state);
+    
+    // LoRa module is not present, clean up SPI and set pins to ANALOG to prevent leakage
+    SPI.end();
+    pinMode(LORA_NSS, INPUT_ANALOG);
+    pinMode(LORA_SCK, INPUT_ANALOG);
+    pinMode(LORA_MISO, INPUT_ANALOG);
+    pinMode(LORA_MOSI, INPUT_ANALOG);
+    pinMode(LORA_BUSY, INPUT_ANALOG);
+    pinMode(LORA_RST, INPUT_ANALOG);
+    pinMode(LORA_RXEN, INPUT_ANALOG);
+    pinMode(LORA_TXEN, INPUT_ANALOG);
   }
 }
 
@@ -72,6 +86,36 @@ void setup() {
   // Attach wake interrupt on PA0 rising edge (when button is pulled high)
   attachInterrupt(digitalPinToInterrupt(WAKE_PIN), wakeUpISR, RISING);
 
+  // --- POWER SAVING: Configure pins to prevent leakage ---
+  
+  // Force the NeoPixel Power Control pin (PA5) HIGH to cut power to the LEDs.
+  pinMode(PA5, OUTPUT);
+  digitalWrite(PA5, HIGH); 
+
+  // Set all unused pins to ANALOG mode to disable digital input buffers.
+  const uint8_t unusedPins[] = {
+    PA4, PA6, PA8,                     // Port A unused
+    PB8, PB9,                          // Port B unused
+    PC14, PC15                         // Port C unused
+  };
+  for (uint8_t pin : unusedPins) {
+    pinMode(pin, INPUT_ANALOG);
+  }
+
+  // Set button pins (which have 10k external pull-ups) to high-impedance INPUT mode
+  // to prevent any leakage current through the resistors.
+  const uint8_t buttonPins[] = {
+    PB2,  // BTN1
+    PA3,  // BTN2
+    PC6,  // BTN3
+    PA1,  // BTN4
+    PA15, // BTN5
+    PA2   // BTN6
+  };
+  for (uint8_t pin : buttonPins) {
+    pinMode(pin, INPUT);
+  }
+
   // We add a 5-second delay before sleeping. This gives you a 5-second 
   // window to upload new code easily without needing to hold the Reset button!
   DebugSerial.println("Waiting 5 seconds before entering sleep...");
@@ -81,29 +125,50 @@ void setup() {
     delay(1000);
   }
   
-  DebugSerial.println("\nPutting LoRa module to sleep (Cold start - lowest current)...");
-  // sleep(false) triggers cold start sleep (retains no configuration, ~160 nA current)
-  int loraSleepState = radio.sleep(false);
-  if (loraSleepState == RADIOLIB_ERR_NONE) {
-    DebugSerial.println("LoRa module is now in deep sleep.");
-  } else {
-    DebugSerial.print("Failed to put LoRa to sleep, code: ");
-    DebugSerial.println(loraSleepState);
+  if (loraPresent) {
+    DebugSerial.println("\nPutting LoRa module to sleep (Cold start - lowest current)...");
+    // sleep(false) triggers cold start sleep (retains no configuration, ~160 nA current)
+    int loraSleepState = radio.sleep(false);
+    if (loraSleepState == RADIOLIB_ERR_NONE) {
+      DebugSerial.println("LoRa module is now in deep sleep.");
+    } else {
+      DebugSerial.print("Failed to put LoRa to sleep, code: ");
+      DebugSerial.println(loraSleepState);
+    }
   }
 
   DebugSerial.println("Entering Stop 1 mode now.");
   DebugSerial.flush(); // Ensure all UART data is transmitted before sleeping
 
-  // Prepare for Stop 1 mode
-  // Suspend the SysTick timer so its interrupts don't wake the MCU prematurely
+  // 1. Shut down the I2C peripheral hardware gates cleanly
+  Wire.end(); 
+
+  // =======================================================================
+  // DIAGNOSTIC TEST: Disable PA0 right before sleep to check for leakage
+  // =======================================================================
+  detachInterrupt(digitalPinToInterrupt(WAKE_PIN)); // Detach the interrupt
+  pinMode(WAKE_PIN, INPUT_ANALOG);                 // Kill the internal pull-down
+  // =======================================================================
+
+  // 2. Clear any pending wake-up flags in the power controller
+  __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
+
+  // 3. Enable the Flash Power Down feature SPECIFICALLY for Sleep/Stop modes
+  HAL_PWREx_EnableFlashPowerDown(PWR_FLASHPD_STOP);
+
+  // 4. Suspend the SysTick timer so its interrupts don't wake the MCU prematurely
   HAL_SuspendTick(); 
 
-  // Enter Stop 1 mode using the HAL (Low Power Regulator ON = Stop 1)
+  // 5. Enter Stop 1 mode using the HAL (Low Power Regulator ON = Stop 1)
   HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI); 
 
+  // ==========================================
   // --- MCU IS ASLEEP HERE ---
+  // ==========================================
 
   // --- MCU WAKES UP HERE ---
+  // Clear the Sleep Power Down bit to restore standard flash operations
+  HAL_PWREx_DisableFlashPowerDown(PWR_FLASHPD_STOP);
 
   // After waking up from Stop mode, the system clock is switched to the HSI (16 MHz).
   // We need to re-initialize the clock to go back to 64 MHz via the PLL.
@@ -114,15 +179,17 @@ void setup() {
 
   DebugSerial.println("MCU woke up successfully!");
 
-  // Re-initialize LoRa module since it was in a cold-start sleep mode
-  DebugSerial.println("Waking up and re-initializing LoRa module...");
-  int state = radio.begin();
-  if (state == RADIOLIB_ERR_NONE) {
-    DebugSerial.println("LoRa module woke up and re-initialized successfully!");
-    radio.setRfSwitchPins(LORA_RXEN, LORA_TXEN);
-  } else {
-    DebugSerial.print("LoRa wake up failed, code: ");
-    DebugSerial.println(state);
+  if (loraPresent) {
+    // Re-initialize LoRa module since it was in a cold-start sleep mode
+    DebugSerial.println("Waking up and re-initializing LoRa module...");
+    int state = radio.begin();
+    if (state == RADIOLIB_ERR_NONE) {
+      DebugSerial.println("LoRa module woke up and re-initialized successfully!");
+      radio.setRfSwitchPins(LORA_RXEN, LORA_TXEN);
+    } else {
+      DebugSerial.print("LoRa wake up failed, code: ");
+      DebugSerial.println(state);
+    }
   }
 }
 
