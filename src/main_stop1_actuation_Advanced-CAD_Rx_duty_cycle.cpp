@@ -68,7 +68,7 @@ void setup() {
   Wire.begin();
   delay(10);
 
-  DebugSerial.println("\n--- STM32G070 Stop 1 Mode + LoRa Sleep Test ---");
+  DebugSerial.println("\n--- STM32G070 Stop 1 Mode + LoRa Advanced CAD Rx Duty Cycle Sleep Test ---");
   DebugSerial.println("Boot up complete.");
 
   // Initialize and check LoRa SX1262 module
@@ -103,13 +103,13 @@ void setup() {
   }
   
   if (loraPresent) {
-    DebugSerial.println("\nPutting LoRa module to sleep (Cold start - lowest current)...");
-    // sleep(false) triggers cold start sleep (retains no configuration, ~160 nA current)
-    int loraSleepState = radio.sleep(false);
+    DebugSerial.println("\nPutting LoRa module to Advanced CAD / Rx Duty Cycle mode...");
+    // 10 ms (10000 us) RX period, 1000 ms (1000000 us) sleep period
+    int loraSleepState = radio.startReceiveDutyCycle(10000, 1000000);
     if (loraSleepState == RADIOLIB_ERR_NONE) {
-      DebugSerial.println("LoRa module is now in deep sleep.");
+      DebugSerial.println("LoRa module is now in RX Duty Cycle mode.");
     } else {
-      DebugSerial.print("Failed to put LoRa to sleep, code: ");
+      DebugSerial.print("Failed to put LoRa to RX Duty Cycle mode, code: ");
       DebugSerial.println(loraSleepState);
     }
   }
@@ -157,7 +157,7 @@ void setup() {
   DebugSerial.println("MCU woke up successfully!");
 
   if (loraPresent) {
-    // Re-initialize LoRa module since it was in a cold-start sleep mode
+    // Re-initialize LoRa module
     DebugSerial.println("Waking up and re-initializing LoRa module...");
     int state = radio.begin(865.0, 125.0, 12, 8, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, 10, 8, 0.0, false);
     if (state == RADIOLIB_ERR_NONE) {
